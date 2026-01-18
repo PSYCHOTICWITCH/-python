@@ -1,0 +1,599 @@
+"""
+Программа "Квартиросъёмщик" - управление базой данных квартиросъемщиков
+Сортировка методом Шелла
+"""
+
+
+def load_database(filename="database.txt"):
+    """
+    Загрузка базы данных из текстового файла.
+    Каждая строка в файле должна содержать данные в формате:
+    фамилия имя отчество улица дом квартира этаж общая_площадь жилая_площадь прописанольготы
+    """
+    database = []
+    
+    try:
+        with open(filename, 'r', encoding='utf-8') as file:
+            for line in file:
+                line = line.strip()
+                if line:
+                    parts = line.split()
+                    if len(parts) == 11:
+                        # Преобразуем строки в нужные типы данных
+                        record = (
+                            parts[0].strip(),      # фамилия
+                            parts[1].strip(),      # имя
+                            parts[2].strip(),      # отчество
+                            parts[3].strip(),      # улица
+                            parts[4].strip(),      # дом
+                            parts[5].strip(),      # квартира
+                            int(parts[6].strip()), # этаж
+                            float(parts[7].strip()), # общая площадь
+                            float(parts[8].strip()), # жилая площадь
+                            int(parts[9].strip()), # прописано
+                            parts[10].strip().lower() == 'да'  # льготы (bool)
+                        )
+                        database.append(record)
+        
+        print(f"Загружено {len(database)} записей из файла {filename}")
+        return database
+    
+    except FileNotFoundError:
+        print(f"Файл {filename} не найден. Создана пустая база данных.")
+        return []
+    except Exception as e:
+        print(f"Ошибка при загрузке файла: {e}")
+        return []
+
+
+def save_database(database, filename="database.txt"):
+    """Сохранение базы данных в текстовый файл"""
+    try:
+        with open(filename, 'w', encoding='utf-8') as file:
+            for record in database:
+                line = (f"{record[0]} {record[1]} {record[2]} {record[3]} "
+                       f"{record[4]} {record[5]} {record[6]} {record[7]:.1f} "
+                       f"{record[8]:.1f} {record[9]} "
+                       f"{'Да' if record[10] else 'Нет'}")
+                file.write(line + '\n')
+        
+        print(f"База данных сохранена в файл {filename} ({len(database)} записей)")
+    
+    except Exception as e:
+        print(f"Ошибка при сохранении файла: {e}")
+
+
+
+def shell_sort(array, key_func=None, reverse=False):
+    """
+    Реализация сортировки методом Шелла с поддержкой многоуровневой сортировки
+    """
+    n = len(array)
+    gap = n // 2
+    
+    while gap > 0:
+        for i in range(gap, n):
+            temp = array[i]
+            j = i
+            
+            # Сравниваем элементы с учетом всех ключей
+            while j >= gap:
+                current = array[j - gap]
+                
+                # Сравниваем значения
+                if key_func:
+                    temp_val = key_func(temp)
+                    current_val = key_func(current)
+                    
+                    # Если нужно сравнить по нескольким критериям
+                    if isinstance(temp_val, tuple) and isinstance(current_val, tuple):
+                        comparison_result = 0
+                        for k in range(len(temp_val)):
+                            if current_val[k] != temp_val[k]:
+                                if not reverse:
+                                    comparison_result = 1 if current_val[k] > temp_val[k] else -1
+                                else:
+                                    comparison_result = -1 if current_val[k] > temp_val[k] else 1
+                                break
+                        
+                        if comparison_result > 0:  # current > temp (для возрастания)
+                            array[j] = array[j - gap]
+                            j -= gap
+                        else:
+                            break
+                    else:
+                        # Для одиночных ключей
+                        if (not reverse and current_val > temp_val) or (reverse and current_val < temp_val):
+                            array[j] = array[j - gap]
+                            j -= gap
+                        else:
+                            break
+                else:
+                    # Сортировка без ключевой функции
+                    if (not reverse and current > temp) or (reverse and current < temp):
+                        array[j] = array[j - gap]
+                        j -= gap
+                    else:
+                        break
+            
+            array[j] = temp
+        
+        gap //= 2
+    
+    return array
+
+
+def display_records(records, title="Список квартиросъемщиков"):
+    """Отображение записей в виде списка"""
+    print(f"{title.upper()}")
+    
+    if not records:
+        print("Нет данных для отображения")
+        return
+    
+    for i, record in enumerate(records, 1):
+        print(f"{i}. ФИО: {record[0]} {record[1]} {record[2]}")
+        print(f"   Адрес: ул. {record[3]}, д.{record[4]}, кв.{record[5]}")
+        print(f"   Этаж: {record[6]}")
+        print(f"   Площадь: общая {record[7]:.1f} м², жилая {record[8]:.1f} м²")
+        print(f"   Прописано: {record[9]} человек")
+        print(f"   Льготы: {'Да' if record[10] else 'Нет'}\n")
+    
+    print(f"Всего записей: {len(records)}\n")
+
+
+def save_report(records, filename, title="Отчет"):
+    """Сохранение отчета в файл в виде списка"""
+    try:
+        with open(filename, 'w', encoding='utf-8') as file:
+            file.write(f"{title}\n")
+            
+            for i, record in enumerate(records, 1):
+                file.write(f"{i}. ФИО: {record[0]} {record[1]} {record[2]}\n")
+                file.write(f"   Адрес: ул. {record[3]}, д.{record[4]}, кв.{record[5]}\n")
+                file.write(f"   Этаж: {record[6]}\n")
+                file.write(f"   Площадь: общая {record[7]:.1f} м², жилая {record[8]:.1f} м²\n")
+                file.write(f"   Прописано: {record[9]} человек\n")
+                file.write(f"   Льготы: {'Да' if record[10] else 'Нет'}\n")
+            
+            file.write(f"\nВсего записей: {len(records)}\n")
+        
+        print(f"Отчет сохранен в файл: {filename}")
+    
+    except Exception as e:
+        print(f"Ошибка при сохранении отчета: {e}")
+
+
+def report1_full_list(database):
+    """
+    ОТЧЕТ 1: Полный список всех квартиросъёмщиков
+    Сортировка: количество прописанных (↓) + адрес (↑)
+    """
+    print("\nФОРМИРОВАНИЕ ОТЧЕТА 1")
+    print("Сортировка: количество прописанных (по убыванию) + адрес (по возрастанию)\n")
+    
+    records = database.copy()
+    
+    def get_sort_key(record):
+        """
+        Ключ для сортировки: сначала по прописанным (убывание), потом по адресу (возрастание)
+        Для убывания используем отрицательное число
+        """
+        # Ключ для адреса
+        street = record[3].lower()
+        
+        # Номер дома
+        house = record[4]
+        house_num = 0
+        house_digits = ''.join(filter(str.isdigit, house))
+        if house_digits:
+            house_num = int(house_digits)
+        
+        # Номер квартиры
+        apartment = record[5]
+        apartment_num = 0
+        apartment_digits = ''.join(filter(str.isdigit, apartment))
+        if apartment_digits:
+            apartment_num = int(apartment_digits)
+        
+        # Возвращаем кортеж: (-прописанные для убывания, улица, дом, квартира)
+        return (-record[9], street, house_num, apartment_num)
+    
+    # сортировка с многоуровневым ключом
+    records = shell_sort(records, key_func=get_sort_key, reverse=False)
+    
+    display_records(records, "ОТЧЕТ 1: Полный список квартиросъёмщиков")
+    return records
+
+
+def report2_with_benefits(database):
+    """
+    ОТЧЕТ 2: Список квартиросъёмщиков с льготами
+    Сортировка: этаж (↑) + прописанные (↓) + общая площадь (↑)
+    """
+    print("\nФОРМИРОВАНИЕ ОТЧЕТА 2\n")
+    
+    filtered = [record for record in database if record[10]]
+    print(f"Найдено квартиросъёмщиков с льготами: {len(filtered)}")
+    
+    if not filtered:
+        print("Нет записей для отчета!")
+        return []
+    
+    def get_sort_key(record):
+        """
+        Ключ для сортировки:
+        - этаж (возрастание)
+        - прописанные (убывание) - используем отрицательное число
+        - площадь (возрастание)
+        """
+        return (record[6], -record[9], record[7])
+    
+    # сортировка с многоуровневым ключом
+    filtered = shell_sort(filtered, key_func=get_sort_key, reverse=False)
+    
+    display_records(filtered, "ОТЧЕТ 2: Квартиросъёмщики с льготами")
+    return filtered
+
+
+def report3_by_area_range(database):
+    """
+    ОТЧЕТ 3: Квартиры в диапазоне площади
+    Сортировка: льготы (↑) + общая площадь (↓)
+    """
+    print("\nФОРМИРОВАНИЕ ОТЧЕТА 3\n")
+    
+    while True:
+        try:
+            n1_input = float(input("Введите минимальную площадь N1 (м²): "))
+            n2_input = float(input("Введите максимальную площадь N2 (м²): "))
+            
+            if n1_input < 0 or n2_input < 0:
+                print("Площадь не может быть отрицательной. Попробуйте снова.")
+                continue
+            
+            if n1_input > n2_input:
+                n1_input, n2_input = n2_input, n1_input
+                print(f"Диапазон автоматически изменен на: {n1_input}-{n2_input} м²")
+            
+            break
+        
+        except ValueError:
+            print("Ошибка: введите числовые значения. Попробуйте снова.")
+    
+    filtered = [record for record in database if n1_input <= record[7] <= n2_input]
+    print(f"Найдено квартир площадью {n1_input}-{n2_input} м²: {len(filtered)}")
+    
+    if not filtered:
+        print("Нет записей для отчета!")
+        return []
+    
+    def get_sort_key(record):
+        """
+        Ключ для сортировки:
+        - льготы (возрастание: False=0, True=1)
+        - площадь (убывание) - используем отрицательное число
+        """
+        return (0 if not record[10] else 1, -record[7])
+    
+    # сортировка с многоуровневым ключом
+    filtered = shell_sort(filtered, key_func=get_sort_key, reverse=False)
+    
+    title = f"ОТЧЕТ 3: Квартиры площадью {n1_input}-{n2_input} м²"
+    display_records(filtered, title)
+    return filtered, n1_input, n2_input
+
+def add_tenant(database):
+    """Добавление нового квартиросъемщика"""
+
+    print("\nДОБАВЛЕНИЕ НОВОГО КВАРТИРОСЪЕМЩИКА\n")
+
+    # Ввод данных с проверкой
+
+    while True:
+        last_name = input("Фамилия: ")
+        if not last_name:
+            print("Фамилия не может быть пустой!")
+            continue
+        try:
+            float(last_name)
+            print("Фамилия не может быть числом")
+            continue
+        except:
+            break
+
+    while True:
+        first_name = input("Имя: ")
+        if not first_name:
+            print("Имя не может быть пустым!")
+            continue
+        try:
+            float(first_name)
+            print("Имя не может быть числом")
+            continue
+        except:
+            break
+
+    
+    while True:
+            middle_name = input("Отчество: ")
+            if not middle_name:
+                print("Отчество не может быть пустым!")
+                continue
+            try:
+                float(middle_name)
+                print("Отчество не может быть числом")
+                continue
+            except:
+                break
+
+    
+    while True:
+        street = input("Улица: ")
+        if not street:
+            print("Улица не может быть пустой!")
+            continue
+        try:
+            float(street)
+            print("Улица не может быть числом")
+            continue
+        except:
+            break
+
+        
+
+    while True:
+            house = input("Дом: ")
+            if not house:
+                print("Дом не может быть пустым!")
+                continue
+            break
+
+    while True:
+            apartment = input("Квартира: ")
+            if not apartment:
+                print("Квартира не может быть пустой!")
+                continue
+            break
+
+    # Ввод числовых значений с проверкой
+    while True:
+        try:
+            floor = int(input("Этаж: "))
+            if floor <= 0:
+                print("Этаж должен быть положительным числом!")
+                continue
+            break
+        except ValueError:
+            print("Ошибка: введите целое число!")
+    
+    while True:
+        try:
+            total_area = float(input("Общая площадь (м²): ").strip())
+            if total_area <= 0:
+                print("Площадь должна быть положительным числом!")
+                continue
+            break
+        except ValueError:
+            print("Ошибка: введите числовое значение!")
+    
+    while True:
+        try:
+            living_area = float(input("Жилая площадь (м²): ").strip())
+            if living_area <= 0 or living_area > total_area:
+                print(f"Жилая площадь должна быть положительной и не больше общей ({total_area} м²)!")
+                continue
+            break
+        except ValueError:
+            print("Ошибка: введите числовое значение!")
+    
+    while True:
+        try:
+            registered = int(input("Количество прописанных человек: ").strip())
+            if registered <= 0:
+                print("Количество должно быть положительным числом!")
+                continue
+            break
+        except ValueError:
+            print("Ошибка: введите целое число!")
+    
+    # Ввод наличия льгот
+    while True:
+        benefits_input = input("Наличие льгот (да/нет): ").strip().lower()
+        if benefits_input in ['да', 'д', 'yes', 'y']:
+            has_benefits = True
+            break
+        elif benefits_input in ['нет', 'н', 'no', 'n']:
+            has_benefits = False
+            break
+        else:
+            print("Пожалуйста, введите 'да' или 'нет'")
+    
+    # Создание новой записи
+    new_record = (
+        last_name, first_name, middle_name,
+        street, house, apartment,
+        floor, total_area, living_area,
+        registered, has_benefits
+    )
+    
+    database.append(new_record)
+    print(f"\nКвартиросъемщик {last_name} {first_name} {middle_name} успешно добавлен!")
+    return database
+
+
+def delete_tenant(database):
+    """Удаление квартиросъемщика"""
+    if not database:
+        print("База данных пуста!")
+        return database
+    
+    print("\nУДАЛЕНИЕ КВАРТИРОСЪЕМЩИКА\n")
+    
+    # Показываем список для выбора
+    print("Список квартиросъемщиков:")
+    for i, record in enumerate(database, 1):
+        print(f"{i}. {record[0]} {record[1]} {record[2]} - "
+              f"{record[3]}, д.{record[4]}, кв.{record[5]}")
+    
+    # Выбор записи для удаления
+    while True:
+        try:
+            choice = input(f"\nВведите номер записи для удаления (1-{len(database)}) "
+                          "или 0 для отмены: ").strip()
+            
+            if choice == '0':
+                print("Удаление отменено.")
+                return database
+            
+            index = int(choice) - 1
+            
+            if 0 <= index < len(database):
+                removed = database.pop(index)
+                print(f"Запись удалена: {removed[0]} {removed[1]} {removed[2]}")
+                return database
+            else:
+                print(f"Неверный номер! Введите число от 1 до {len(database)}")
+        
+        except ValueError:
+            print("Ошибка: введите число!")
+
+
+def show_statistics(database):
+    """Показать статистику по базе данных"""
+    if not database:
+        print("База данных пуста!")
+        return
+    
+    total = len(database)
+    with_benefits = sum(1 for record in database if record[10])
+    total_area = sum(record[7] for record in database)
+    total_living_area = sum(record[8] for record in database)
+    total_people = sum(record[9] for record in database)
+    
+    print("\nСТАТИСТИКА БАЗЫ ДАННЫХ\n")
+    print(f"Всего квартиросъёмщиков: {total}")
+    print(f"С льготами: {with_benefits} ({with_benefits/total*100:.1f}%)")
+    print(f"Без льгот: {total - with_benefits} ({(total-with_benefits)/total*100:.1f}%)")
+    print(f"Общая площадь всех квартир: {total_area:.1f} м²")
+    print(f"Общая жилая площадь: {total_living_area:.1f} м²")
+    print(f"Всего прописано человек: {total_people}")
+    print(f"Средняя площадь на квартиру: {total_area/total:.1f} м²")
+    print(f"Среднее количество человек на квартиру: {total_people/total:.1f}\n")
+    
+
+
+def main_menu():
+    """Главное меню программы"""
+    print("\nПРОГРАММА 'КВАРТИРОСЪЕМЩИК'")
+    print("Сортировка методом Шелла\n")
+    print("1. Показать все записи")
+    print("2. Отчет 1: Полный список (прописанные↓, адрес↑)")
+    print("3. Отчет 2: Квартиросъёмщики с льготами")
+    print("4. Отчет 3: Квартиры по диапазону площади")
+    print("5. Добавить нового квартиросъемщика")
+    print("6. Удалить квартиросъемщика")
+    print("7. Статистика")
+    print("8. Сохранить отчет в файл")
+    print("9. Сохранить базу данных")
+    print("0. Выход\n")
+
+
+def main():
+    """Основная функция программы"""
+    database = load_database()
+
+    # Переменные для хранения последних отчетов
+    last_report1 = []
+    last_report2 = []
+    last_report3 = []
+    last_n1 = last_n2 = 0
+    
+    print(f"\nБаза данных загружена. Всего записей: {len(database)}")
+    
+    while True:
+        main_menu()
+        choice = input("\nВыберите действие (0-9): ").strip()
+
+        match choice:
+            case "0":
+                while True:
+                    try:
+                        save_choice = int(input("Сохранить изменения в базе данных перед выходом? (да - 1/нет - 0): "))
+                        if save_choice != 1 and save_choice != 0:
+                            print("Ошибка ввода. Попробуйте еще раз.")
+                            continue
+                        break
+                    except:
+                        print("Ошибка ввода. Попробуйте еще раз")
+
+                if save_choice == 1:
+                    save_database(database)
+                print("\nВыход из программы. До свидания!")
+                break
+                return
+        
+            case "1":
+                display_records(database, "ВСЕ ЗАПИСИ")
+
+            case "2":
+                last_report1 = report1_full_list(database)
+
+            case "3":
+                last_report2 = report2_with_benefits(database)
+                
+            case "4":
+                result = report3_by_area_range(database)
+                if result:
+                    last_report3, last_n1, last_n2 = result
+                    
+            case "5":
+                database = add_tenant(database)
+                
+            case "6":
+                database = delete_tenant(database)
+                
+            case "7":
+                show_statistics(database)
+                
+            case "8":
+                if not (last_report1 or last_report2 or last_report3):
+                    print("Сначала сформируйте хотя бы один отчет!")
+                    continue
+                
+                print("\n" + "="*50)
+                print("СОХРАНЕНИЕ ОТЧЕТА В ФАЙЛ")
+                print("="*50)
+                
+                if last_report1:
+                    print("1. Сохранить Отчет 1")
+                if last_report2:
+                    print("2. Сохранить Отчет 2")
+                if last_report3:
+                    print("3. Сохранить Отчет 3")
+                print("0. Назад")
+                
+                save_choice = input("Выберите отчет для сохранения: ").strip()
+                
+                if save_choice == "1" and last_report1:
+                    save_report(last_report1, "report1.txt", "ОТЧЕТ 1: Полный список")
+                elif save_choice == "2" and last_report2:
+                    save_report(last_report2, "report2.txt", "ОТЧЕТ 2: С льготами")
+                elif save_choice == "3" and last_report3:
+                    title = f"ОТЧЕТ 3: Квартиры площадью {last_n1}-{last_n2} м²"
+                    save_report(last_report3, "report3.txt", title)
+                elif save_choice == "0":
+                    continue
+                else:
+                    print("Неверный выбор или отчет не сформирован.")
+            case "9":
+                save_database(database)
+
+            case _:
+                print("Неверный выбор. Попробуйте еще раз.")
+
+        input("\nНажмите Enter для продолжения...")
+
+
+if __name__ == "__main__":
+    main()
